@@ -8,6 +8,9 @@ const upload = multer({ dest: "uploads/" });
 
 const BUCKET = process.env.SUPABASE_BUCKET || "uploads";
 
+// Allowed categories
+const ALLOWED_CATEGORIES = ["road", "water", "garbage", "electricity", "other"];
+
 router.post(
   "/upload",
   upload.fields([
@@ -18,9 +21,21 @@ router.post(
     try {
       const files = req.files;
       const text = req.body.text?.trim();
+      const category = req.body.category?.trim();
+      const latitude = parseFloat(req.body.latitude);
+      const longitude = parseFloat(req.body.longitude);
+      const address = req.body.address?.trim() || null;
+
       const uploadedFiles = {};
 
       // --- Validate required fields ---
+      if (!category || !ALLOWED_CATEGORIES.includes(category)) {
+        return res.status(400).json({
+          status: "error",
+          message: `Category is required and must be one of: ${ALLOWED_CATEGORIES.join(", ")}`,
+        });
+      }
+
       if (!files?.image) {
         return res.status(400).json({
           status: "error",
@@ -35,6 +50,13 @@ router.post(
         });
       }
 
+      if (isNaN(latitude) || isNaN(longitude)) {
+        return res.status(400).json({
+          status: "error",
+          message: "Latitude and longitude are required.",
+        });
+      }
+
       // --- Upload Image ---
       const imageFile = files.image[0];
       const imageBuffer = fs.readFileSync(imageFile.path);
@@ -44,7 +66,11 @@ router.post(
         .from(BUCKET)
         .upload(imagePath, imageBuffer, {
           contentType: imageFile.mimetype,
+          upsert: false,
         });
+
+      // cleanup temp file
+      fs.unlinkSync(imageFile.path);
 
       if (imgErr) throw imgErr;
 
@@ -60,7 +86,11 @@ router.post(
           .from(BUCKET)
           .upload(audioPath, audioBuffer, {
             contentType: audioFile.mimetype,
+            upsert: false,
           });
+
+        // cleanup temp file
+        fs.unlinkSync(audioFile.path);
 
         if (audErr) throw audErr;
 
@@ -72,9 +102,13 @@ router.post(
         .from("messages")
         .insert([
           {
-            image_url: uploadedFiles.image_url,
+            category,
             text: text || null,
+            image_url: uploadedFiles.image_url,
             audio_url: uploadedFiles.audio_url || null,
+            latitude,
+            longitude,
+            address,
           },
         ])
         .select();
@@ -87,11 +121,26 @@ router.post(
         record: data[0],
       });
     } catch (err) {
-      return res
-        .status(500)
-        .json({ status: "error", message: err.message });
+      return res.status(500).json({
+        status: "error",
+        message: err.message,
+      });
     }
   }
 );
+
+// --- Get messages (consistent response) ---
+router.get("/messages", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json({ status: "success", data });
+  } catch (err) {
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
 
 export default router;

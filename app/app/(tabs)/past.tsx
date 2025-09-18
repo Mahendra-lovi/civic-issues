@@ -1,39 +1,52 @@
 // app/(tabs)/past.tsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, Image, StyleSheet, SafeAreaView } from 'react-native';
-import { getIssues } from '../../services/issues';
 import { useIsFocused } from '@react-navigation/native';
+import { fetchIssues } from '../../services/api'; // ✅ use new API service
 
 export default function PastIssuesScreen() {
   const [issues, setIssues] = useState<any[]>([]);
   const focused = useIsFocused();
 
   useEffect(() => {
-    // refresh every time screen is focused
-    setIssues(getIssues());
+    const load = async () => {
+      try {
+        const data = await fetchIssues();
+        setIssues(data);
+      } catch (err) {
+        console.log('fetchIssues err', err);
+      }
+    };
+    load();
   }, [focused]);
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
       <View style={styles.rowTop}>
         <Text style={styles.category}>{item.category ?? 'Uncategorized'}</Text>
-        <Text style={styles.date}>{new Date(item.createdAt).toLocaleString()}</Text>
+        <Text style={styles.date}>{new Date(item.created_at).toLocaleString()}</Text>
       </View>
 
-      {item.image ? (
-        <Image source={{ uri: item.image }} style={styles.cardImage} />
+      {item.image_url ? (
+        <Image source={{ uri: item.image_url }} style={styles.cardImage} />
       ) : (
-        <View style={styles.noImage}><Text style={{ color: '#888' }}>No image</Text></View>
-      )}
-
-      <Text style={styles.desc}>{item.description}</Text>
-
-      {item.location && (
-        <View style={styles.locationBlock}>
-          <Text style={styles.locationText}>📍 {item.location.address ?? `${item.location.latitude}, ${item.location.longitude}`}</Text>
-          <Text style={styles.coords}>Lat: {item.location.latitude.toFixed(6)}, Lng: {item.location.longitude.toFixed(6)}</Text>
+        <View style={styles.noImage}>
+          <Text style={{ color: '#888' }}>No image</Text>
         </View>
       )}
+
+      {item.text && <Text style={styles.desc}>{item.text}</Text>}
+
+      <View style={styles.locationBlock}>
+  <Text style={styles.locationText}>
+    📍 {item.address ?? (item.latitude && item.longitude ? `${item.latitude}, ${item.longitude}` : "No location")}
+  </Text>
+  {item.latitude != null && item.longitude != null && (
+    <Text style={styles.coords}>
+      Lat: {item.latitude.toFixed(6)}, Lng: {item.longitude.toFixed(6)}
+    </Text>
+  )}
+</View>
     </View>
   );
 
@@ -41,10 +54,14 @@ export default function PastIssuesScreen() {
     <SafeAreaView style={{ flex: 1 }}>
       <FlatList
         data={issues}
-        keyExtractor={(i) => i.id}
+        keyExtractor={(i) => String(i.id)} // ✅ ensure string
         renderItem={renderItem}
         contentContainerStyle={{ padding: 12 }}
-        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 30, color: '#666' }}>No reports yet</Text>}
+        ListEmptyComponent={
+          <Text style={{ textAlign: 'center', marginTop: 30, color: '#666' }}>
+            No reports yet
+          </Text>
+        }
       />
     </SafeAreaView>
   );

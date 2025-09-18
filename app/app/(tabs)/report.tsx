@@ -17,8 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 // import { addIssue } from '../../services/issues';
 import { useRouter } from 'expo-router';
-import { Issue, addIssue } from '../../services/issues';
-
+// import { Issue, addIssue } from '../../services/issues';
+import { uploadIssue } from '../../services/api';
 
 export default function ReportedScreen() {
   const [image, setImage] = useState<string | null>(null);
@@ -83,22 +83,21 @@ export default function ReportedScreen() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!image || !description.trim() || !category || !location) {
       Alert.alert('Missing fields', 'Please provide image, description, category and location.');
       return;
     }
-const newIssue: Issue = {
-  id: Date.now().toString(),
-  image: image!, // no need for fallback here
-  description,
-  category,
-  location: location!,
-  createdAt: new Date().toISOString(), // fix type mismatch
-};
 
+    try {
+      const record = await uploadIssue({
+        imageUri: image,
+        text: description.trim(),
+        category,
+        location,
+      });
 
-    addIssue(newIssue);
+    // addIssue(newIssue);
     Alert.alert('Success', 'Issue submitted');
 
     // Clear inputs (or navigate to Past)
@@ -109,7 +108,11 @@ const newIssue: Issue = {
 
     // go to Past screen
     router.push('/past');
-  };
+  }catch (err: any) {
+    console.log('Submit err', err);
+    Alert.alert('Error', err.message || 'Could not submit issue');
+  }
+};
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
