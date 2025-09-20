@@ -1,5 +1,5 @@
 // services/api.ts
-const API_URL = "http://192.168.0.190:5000"; // replace with your backend host
+const API_URL = "http://192.168.0.183:5000"; // replace with your backend host
 
 // Define the file object type for better type safety
 type FileObject = {

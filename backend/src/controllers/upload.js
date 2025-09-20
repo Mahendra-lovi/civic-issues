@@ -11,8 +11,25 @@ const BUCKET = process.env.SUPABASE_BUCKET || "uploads";
 // Allowed categories
 const ALLOWED_CATEGORIES = ["road", "water", "garbage", "electricity", "other"];
 
+// Middleware to get logged-in user from token
+const getUserFromToken = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    if (!token) return res.status(401).json({ error: "No token provided" });
+
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return res.status(401).json({ error: "Invalid or expired token" });
+
+    req.user = user; // attach user to request
+    next();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 router.post(
   "/upload",
+  getUserFromToken, // 👈 check user first
   upload.fields([
     { name: "image", maxCount: 1 },
     { name: "audio", maxCount: 1 },
@@ -32,7 +49,7 @@ router.post(
       if (!category || !ALLOWED_CATEGORIES.includes(category)) {
         return res.status(400).json({
           status: "error",
-          message: `Category is required and must be one of: ${ALLOWED_CATEGORIES.join(", ")}`,
+          message: `Category must be one of: ${ALLOWED_CATEGORIES.join(", ")}`,
         });
       }
 
@@ -69,7 +86,6 @@ router.post(
           upsert: false,
         });
 
-      // cleanup temp file
       fs.unlinkSync(imageFile.path);
 
       if (imgErr) throw imgErr;
@@ -89,7 +105,6 @@ router.post(
             upsert: false,
           });
 
-        // cleanup temp file
         fs.unlinkSync(audioFile.path);
 
         if (audErr) throw audErr;
@@ -102,6 +117,7 @@ router.post(
         .from("messages")
         .insert([
           {
+            user_id: req.user.id, // 👈 link to logged-in user
             category,
             text: text || null,
             image_url: uploadedFiles.image_url,
@@ -129,13 +145,15 @@ router.post(
   }
 );
 
-// --- Get messages (consistent response) ---
-router.get("/messages", async (req, res) => {
+// --- Get messages only for this user ---
+router.get("/messages", getUserFromToken, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("messages")
       .select("*")
+      .eq("user_id", req.user.id) // 👈 filter by user
       .order("created_at", { ascending: false });
+
     if (error) throw error;
     res.json({ status: "success", data });
   } catch (err) {
