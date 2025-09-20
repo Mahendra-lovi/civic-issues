@@ -1,5 +1,12 @@
 // services/api.ts
-const API_URL = "http://192.168.0.190:5000"; // replace with your backend host
+import * as SecureStore from "expo-secure-store";
+
+const API_URL = "http://192.168.0.183:5000"; // replace with your backend host
+
+// --- Token helpers ---
+async function getToken() {
+  return await SecureStore.getItemAsync("sb_token");
+}
 
 // Define the file object type for better type safety
 type FileObject = {
@@ -22,13 +29,16 @@ export async function uploadIssue({
   category: string;
   location: { latitude: number; longitude: number; address?: string };
 }) {
+  const token = await getToken();
+  if (!token) throw new Error("User not logged in");
+
   const formData = new FormData();
 
   // Create a robust file name and type
   const getImageNameAndType = (uri: string): { name: string; type: string } => {
-    const filename = uri.split('/').pop()!;
-    const fileExtension = filename.split('.').pop();
-    const mimeType = `image/${fileExtension === 'png' ? 'png' : 'jpeg'}`;
+    const filename = uri.split("/").pop()!;
+    const fileExtension = filename.split(".").pop();
+    const mimeType = `image/${fileExtension === "png" ? "png" : "jpeg"}`;
     return { name: filename, type: mimeType };
   };
 
@@ -43,8 +53,8 @@ export async function uploadIssue({
 
   // Append audio if provided
   if (audioUri) {
-    const audioName = audioUri.split('/').pop()!;
-    const audioType = "audio/m4a"; // You may need to adjust this based on your audio format
+    const audioName = audioUri.split("/").pop()!;
+    const audioType = "audio/m4a"; // adjust if needed
     formData.append("audio", {
       uri: audioUri,
       type: audioType,
@@ -61,16 +71,18 @@ export async function uploadIssue({
   try {
     const res = await fetch(`${API_URL}/api/upload`, {
       method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`, // ✅ send Supabase token
+      },
       body: formData,
     });
 
     const data = await res.json();
     if (!res.ok) {
-      // The backend returns { status: "error", message: "..." } on failure
       throw new Error(data.message || "Upload failed");
     }
 
-    return data.record; // Assuming the backend returns the created record
+    return data.record; // Assuming backend returns created record
   } catch (error) {
     console.error("Upload error:", error);
     throw error;
@@ -79,10 +91,18 @@ export async function uploadIssue({
 
 // Fetch issues from DB
 export async function fetchIssues() {
+  const token = await getToken();
+  if (!token) throw new Error("User not logged in");
+
   try {
-    const res = await fetch(`${API_URL}/api/messages`);
+    const res = await fetch(`${API_URL}/api/messages`, {
+      headers: {
+        Authorization: `Bearer ${token}`, // ✅ send Supabase token
+      },
+    });
+
     const data = await res.json();
-    
+
     if (!res.ok) {
       throw new Error(data.message || "Could not fetch issues");
     }

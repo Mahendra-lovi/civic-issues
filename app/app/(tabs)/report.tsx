@@ -1,5 +1,6 @@
 // app/(tabs)/report.tsx
 import React, { useState } from 'react';
+import { Audio } from 'expo-av';
 import {
   View,
   Text,
@@ -21,6 +22,8 @@ import { useRouter } from 'expo-router';
 import { uploadIssue } from '../../services/api';
 
 export default function ReportedScreen() {
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [audioUri, setAudioUri] = useState<string | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -34,20 +37,52 @@ export default function ReportedScreen() {
 
   // pick image from library
   const pickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.7,
-      });
-      if (!result.canceled) {
-        setImage(result.assets[0].uri);
-      }
-    } catch (err) {
-      console.log('pickImage err', err);
-      Alert.alert('Error', 'Could not open image picker');
-    }
-  };
+  Alert.alert(
+    "Select Image",
+    "Choose the image source",
+    [
+      {
+        text: "Camera",
+        onPress: async () => {
+          try {
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              quality: 0.7,
+            });
+            if (!result.canceled) {
+              setImage(result.assets[0].uri);
+            }
+          } catch (err) {
+            console.log("Camera err", err);
+            Alert.alert("Error", "Could not open camera");
+          }
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              quality: 0.7,
+            });
+            if (!result.canceled) {
+              setImage(result.assets[0].uri);
+            }
+          } catch (err) {
+            console.log("Gallery err", err);
+            Alert.alert("Error", "Could not open gallery");
+          }
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ],
+    { cancelable: true }
+  );
+};
+
 
   // get location + human readable address (reverse geocode)
   const fetchLocation = async () => {
@@ -83,15 +118,64 @@ export default function ReportedScreen() {
     }
   };
 
+
+  // start recording
+const startRecording = async () => {
+  try {
+    console.log('Requesting permissions..');
+    await Audio.requestPermissionsAsync();
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+    });
+
+    console.log('Starting recording..');
+    const { recording } = await Audio.Recording.createAsync(
+      Audio.RecordingOptionsPresets.HIGH_QUALITY
+    );
+    setRecording(recording);
+  } catch (err) {
+    console.error('Failed to start recording', err);
+  }
+};
+
+// stop recording
+const stopRecording = async () => {
+  console.log('Stopping recording..');
+  if (!recording) return;
+
+  await recording.stopAndUnloadAsync();
+  const uri = recording.getURI();
+  setAudioUri(uri);
+  setRecording(null);
+  console.log('Recording stored at', uri);
+};
+
+
+
   const handleSubmit = async () => {
-    if (!image || !description.trim() || !category || !location) {
-      Alert.alert('Missing fields', 'Please provide image, description, category and location.');
-      return;
-    }
+    if (!image) {
+  Alert.alert('Missing fields', 'Image is required.');
+  return;
+}
+if (!description.trim() && !audioUri) {
+  Alert.alert('Missing fields', 'Please provide either text or audio.');
+  return;
+}
+if (!category) {
+  Alert.alert('Missing fields', 'Please select a category.');
+  return;
+}
+if (!location) {
+  Alert.alert('Missing fields', 'Please fetch your location.');
+  return;
+}
+
 
     try {
       const record = await uploadIssue({
         imageUri: image,
+        audioUri: audioUri || undefined,
         text: description.trim(),
         category,
         location,
@@ -105,6 +189,7 @@ export default function ReportedScreen() {
     setDescription('');
     setCategory('');
     setLocation(null);
+    setAudioUri(null);
 
     // go to Past screen
     router.push('/past');
@@ -133,9 +218,17 @@ export default function ReportedScreen() {
             onChangeText={setDescription}
             multiline
           />
-          <TouchableOpacity style={styles.iconBtn} onPress={() => Alert.alert('Voice', 'Voice feature placeholder')}>
-            <Ionicons name="mic-outline" size={26} color="#333" />
-          </TouchableOpacity>
+          <TouchableOpacity
+  style={styles.iconBtn}
+  onPress={recording ? stopRecording : startRecording}
+>
+  <Ionicons
+    name={recording ? "close-circle-outline" : "mic-outline"}
+    size={26}
+    color={recording ? "red" : "#333"}
+  />
+</TouchableOpacity>
+
         </View>
 
         <Text style={styles.label}>Category</Text>
