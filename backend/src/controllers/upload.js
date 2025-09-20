@@ -8,8 +8,28 @@ const upload = multer({ dest: "uploads/" });
 
 const BUCKET = process.env.SUPABASE_BUCKET || "uploads";
 
+// Allowed categories
+const ALLOWED_CATEGORIES = ["road", "water", "garbage", "electricity", "other"];
+
+// Middleware to get logged-in user from token
+const getUserFromToken = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    if (!token) return res.status(401).json({ error: "No token provided" });
+
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return res.status(401).json({ error: "Invalid or expired token" });
+
+    req.user = user; // attach user to request
+    next();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 router.post(
   "/upload",
+  getUserFromToken, // 👈 check user first
   upload.fields([
     { name: "image", maxCount: 1 },
     { name: "audio", maxCount: 1 },
@@ -18,9 +38,21 @@ router.post(
     try {
       const files = req.files;
       const text = req.body.text?.trim();
+      const category = req.body.category?.trim();
+      const latitude = parseFloat(req.body.latitude);
+      const longitude = parseFloat(req.body.longitude);
+      const address = req.body.address?.trim() || null;
+
       const uploadedFiles = {};
 
       // --- Validate required fields ---
+      if (!category || !ALLOWED_CATEGORIES.includes(category)) {
+        return res.status(400).json({
+          status: "error",
+          message: `Category must be one of: ${ALLOWED_CATEGORIES.join(", ")}`,
+        });
+      }
+
       if (!files?.image) {
         return res.status(400).json({
           status: "error",
@@ -35,6 +67,13 @@ router.post(
         });
       }
 
+      if (isNaN(latitude) || isNaN(longitude)) {
+        return res.status(400).json({
+          status: "error",
+          message: "Latitude and longitude are required.",
+        });
+      }
+
       // --- Upload Image ---
       const imageFile = files.image[0];
       const imageBuffer = fs.readFileSync(imageFile.path);
@@ -44,7 +83,10 @@ router.post(
         .from(BUCKET)
         .upload(imagePath, imageBuffer, {
           contentType: imageFile.mimetype,
+          upsert: false,
         });
+
+      fs.unlinkSync(imageFile.path);
 
       if (imgErr) throw imgErr;
 
@@ -60,7 +102,10 @@ router.post(
           .from(BUCKET)
           .upload(audioPath, audioBuffer, {
             contentType: audioFile.mimetype,
+            upsert: false,
           });
+
+        fs.unlinkSync(audioFile.path);
 
         if (audErr) throw audErr;
 
@@ -72,9 +117,15 @@ router.post(
         .from("messages")
         .insert([
           {
-            image_url: uploadedFiles.image_url,
+            user_id: req.user.id, // 👈 link to logged-in user
+            category,
             text: text || null,
+            image_url: uploadedFiles.image_url,
             audio_url: uploadedFiles.audio_url || null,
+            latitude,
+            longitude,
+            address,
+            // status: "pending",
           },
         ])
         .select();
@@ -87,11 +138,28 @@ router.post(
         record: data[0],
       });
     } catch (err) {
-      return res
-        .status(500)
-        .json({ status: "error", message: err.message });
+      return res.status(500).json({
+        status: "error",
+        message: err.message,
+      });
     }
   }
 );
+
+// --- Get messages only for this user ---
+router.get("/messages", getUserFromToken, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("user_id", req.user.id) // 👈 filter by user
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    res.json({ status: "success", data });
+  } catch (err) {
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
 
 export default router;
