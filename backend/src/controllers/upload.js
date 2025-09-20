@@ -125,6 +125,7 @@ router.post(
             latitude,
             longitude,
             address,
+            // status: "pending",
           },
         ])
         .select();

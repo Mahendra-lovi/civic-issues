@@ -1,32 +1,57 @@
 // app/(tabs)/past.tsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, Image, StyleSheet, SafeAreaView } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
-import { fetchIssues } from '../../services/api'; // ✅ use new API service
+import { supabase } from '@/services/supabaseclient';  
+import useRealtimeMessages from '@/hooks/useRealtimeMessages';
 
 export default function PastIssuesScreen() {
-  const [issues, setIssues] = useState<any[]>([]);
-  const focused = useIsFocused();
+  const [userId, setUserId] = useState<string>('');
 
+  // Fetch current user ID
   useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await fetchIssues();
-        setIssues(data);
-      } catch (err) {
-        console.log('fetchIssues err', err);
+    const fetchUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUserId(data.user.id);
       }
+      if (error) console.log('Error fetching user:', error);
     };
-    load();
-  }, [focused]);
+    fetchUser();
+  }, []);
+
+  // Subscribe to realtime messages for this user
+  const issues = useRealtimeMessages(userId);
+
+  const getStatusColor = (status: string | undefined) => {
+    switch (status) {
+      case 'Pending':
+        return { color: 'orange' };
+      case 'In Progress':
+        return { color: '#0A84FF' };
+      case 'Resolved':
+        return { color: 'green' };
+      default:
+        return { color: '#888' };
+    }
+  };
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
+      {/* Top row: category and created date */}
       <View style={styles.rowTop}>
         <Text style={styles.category}>{item.category ?? 'Uncategorized'}</Text>
         <Text style={styles.date}>{new Date(item.created_at).toLocaleString()}</Text>
       </View>
 
+      {/* Status row */}
+      <View style={styles.rowTop}>
+        <Text style={styles.category}>Status:</Text>
+        <Text style={[styles.status, getStatusColor(item.status)]}>
+          {item.status ?? 'Pending'}
+        </Text>
+      </View>
+
+      {/* Image */}
       {item.image_url ? (
         <Image source={{ uri: item.image_url }} style={styles.cardImage} />
       ) : (
@@ -35,18 +60,20 @@ export default function PastIssuesScreen() {
         </View>
       )}
 
+      {/* Text description */}
       {item.text && <Text style={styles.desc}>{item.text}</Text>}
 
+      {/* Location info */}
       <View style={styles.locationBlock}>
-  <Text style={styles.locationText}>
-    📍 {item.address ?? (item.latitude && item.longitude ? `${item.latitude}, ${item.longitude}` : "No location")}
-  </Text>
-  {item.latitude != null && item.longitude != null && (
-    <Text style={styles.coords}>
-      Lat: {item.latitude.toFixed(6)}, Lng: {item.longitude.toFixed(6)}
-    </Text>
-  )}
-</View>
+        <Text style={styles.locationText}>
+          📍 {item.address ?? (item.latitude && item.longitude ? `${item.latitude}, ${item.longitude}` : "No location")}
+        </Text>
+        {item.latitude != null && item.longitude != null && (
+          <Text style={styles.coords}>
+            Lat: {item.latitude.toFixed(6)}, Lng: {item.longitude.toFixed(6)}
+          </Text>
+        )}
+      </View>
     </View>
   );
 
@@ -54,7 +81,7 @@ export default function PastIssuesScreen() {
     <SafeAreaView style={{ flex: 1 }}>
       <FlatList
         data={issues}
-        keyExtractor={(i) => String(i.id)} // ✅ ensure string
+        keyExtractor={(i) => String(i.id)}
         renderItem={renderItem}
         contentContainerStyle={{ padding: 12 }}
         ListEmptyComponent={
@@ -68,6 +95,8 @@ export default function PastIssuesScreen() {
 }
 
 const styles = StyleSheet.create({
+  status: { fontWeight: '700', fontSize: 12 },
+
   card: {
     backgroundColor: '#fff',
     borderRadius: 10,

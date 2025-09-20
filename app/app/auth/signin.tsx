@@ -2,37 +2,44 @@ import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'reac
 import React, { useState } from 'react';
 import { Link, router } from 'expo-router';
 import { supabase } from '@/services/supabaseclient';
+import * as SecureStore from "expo-secure-store";
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleSignIn() {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter your email and password.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        Alert.alert('Sign In Error', error.message);
-      } else if (data?.user) {
-        // Successful sign-in
-        router.replace('/home'); // Redirect to main app
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Something went wrong.');
-    } finally {
-      setLoading(false);
-    }
+async function handleSignIn() {
+  if (!email || !password) {
+    Alert.alert('Error', 'Please enter your email and password.');
+    return;
   }
+
+  setLoading(true);
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      Alert.alert('Sign In Error', error.message);
+    } else if (data?.session) {
+      const token = data.session.access_token;
+      console.log('Access Token:', token);
+
+      // ✅ Store securely
+      await SecureStore.setItemAsync("sb_token", token);
+
+      router.replace('/home');
+    }
+  } catch (err: any) {
+    Alert.alert('Error', err.message || 'Something went wrong.');
+  } finally {
+    setLoading(false);
+  }
+}
+
 
   return (
     <View style={styles.container}>
