@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Civic Issues Dashboard
+
+A Next.js web application for managing and analyzing civic issues in your community.
+
+## Features
+
+- **Authentication**: Simple sign-in system with persistent login state
+- **Dashboard Layout**: Clean, responsive layout with navigation menu
+- **Analysis Page**: View and manage civic issues with filtering and categorization
+- **Reports Page**: Generate and view reports on civic issues
+- **Responsive Design**: Works on desktop and mobile devices
 
 ## Getting Started
 
-First, run the development server:
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+2. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+3. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Usage
+
+1. **Sign In**: Use any email and password to sign in (demo mode)
+2. **Analysis**: After signing in, you'll be redirected to the Analysis page where you can:
+   - View all civic issues
+   - Filter by category (Infrastructure, Public Safety, Environment, Transportation)
+   - See issue details, priority levels, and status
+   - View summary statistics
+3. **Reports**: Navigate to the Reports page to:
+   - View generated reports
+   - See report status and details
+   - Access summary statistics
+
+## Project Structure
+
+```
+web/
+├── app/
+│   ├── contexts/
+│   │   └── AuthContext.tsx      # Authentication context
+│   ├── components/
+│   │   └── ProtectedRoute.tsx   # Route protection component
+│   ├── dashboard/
+│   │   ├── layout.tsx           # Dashboard layout with navigation
+│   │   ├── analysis.tsx         # Analysis page
+│   │   └── reports.tsx          # Reports page
+│   ├── globals.css              # Global styles
+│   ├── layout.tsx               # Root layout
+│   └── page.tsx                 # Sign-in page
+├── public/                      # Static assets
+└── package.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Technologies Used
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Next.js 15** - React framework
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
+- **React Context** - State management
+- **Next.js App Router** - File-based routing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Demo Data
 
-## Learn More
+The application includes mock data for demonstration purposes:
+- Sample civic issues with different priorities and statuses
+- Pre-generated reports with various states
+- Realistic categories and descriptions
 
-To learn more about Next.js, take a look at the following resources:
+## Authentication
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Currently uses a simple demo authentication system. In a production environment, you would integrate with a proper authentication service like Auth0, Firebase Auth, or Supabase.
