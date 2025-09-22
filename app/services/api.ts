@@ -67,7 +67,7 @@ export async function uploadIssue({
   formData.append("latitude", location.latitude.toString());
   formData.append("longitude", location.longitude.toString());
   if (location.address) formData.append("address", location.address);
-
+console.log('Posting to URL:', `${API_URL}/api/upload`);
   try {
     const res = await fetch(`${API_URL}/api/upload`, {
       method: "POST",
@@ -77,8 +77,16 @@ export async function uploadIssue({
       body: formData,
     });
 
+      const ct = res.headers.get("content-type") || "";
+  const raw = await res.clone().text(); // Get raw response for debugging
+  
+  if (!ct.includes("application/json")) {
+    console.log("uploadIssue non-JSON response:", res.status, raw);
+    throw new Error(`Upload failed: expected JSON but got ${ct} (status ${res.status})`);
+  }
     const data = await res.json();
     if (!res.ok) {
+      console.log('Upload failed with JSON response:', data);
       throw new Error(data.message || "Upload failed");
     }
 
@@ -100,6 +108,15 @@ export async function fetchIssues() {
         Authorization: `Bearer ${token}`, // ✅ send Supabase token
       },
     });
+
+  // 🚨 ADD DEFENSIVE PARSING HERE TOO
+  const ct = res.headers.get("content-type") || "";
+  const raw = await res.clone().text();
+  
+  if (!ct.includes("application/json")) {
+    console.log("fetchIssues non-JSON response:", res.status, raw);
+    throw new Error(`Fetch failed: expected JSON but got ${ct} (status ${res.status})`);
+  }
 
     const data = await res.json();
 
