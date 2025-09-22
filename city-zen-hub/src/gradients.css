@@ -1,0 +1,83 @@
+/* Complex Gradient Backgrounds for Civic Dashboard */
+
+@layer base {
+  :root {
+    /* Complex Website Background */
+    --gradient-website: radial-gradient(ellipse 80% 50% at 20% 40%, hsl(217 91% 75% / 0.15) 0%, transparent 50%),
+                       radial-gradient(ellipse 60% 40% at 80% 20%, hsl(142 71% 60% / 0.12) 0%, transparent 50%),
+                       radial-gradient(ellipse 70% 60% at 40% 80%, hsl(262 83% 58% / 0.18) 0%, transparent 50%),
+                       radial-gradient(ellipse 90% 70% at 90% 60%, hsl(217 91% 60% / 0.08) 0%, transparent 50%),
+                       radial-gradient(ellipse 50% 30% at 10% 70%, hsl(142 71% 45% / 0.1) 0%, transparent 50%),
+                       radial-gradient(ellipse 100% 80% at 50% 50%, hsl(217 91% 70% / 0.05) 0%, transparent 70%);
+
+    /* Complex Gradient Backgrounds */
+    --gradient-complex: radial-gradient(ellipse at top left, hsl(217 91% 75% / 0.3) 0%, transparent 50%),
+                       radial-gradient(ellipse at top right, hsl(142 71% 60% / 0.2) 0%, transparent 50%),
+                       radial-gradient(ellipse at bottom left, hsl(262 83% 58% / 0.25) 0%, transparent 50%),
+                       radial-gradient(ellipse at bottom right, hsl(217 91% 60% / 0.15) 0%, transparent 50%),
+                       radial-gradient(ellipse at center, hsl(217 91% 70% / 0.1) 0%, transparent 60%);
+
+    /* Animated Gradient Background */
+    --gradient-animated: linear-gradient(-45deg,
+                         hsl(217 91% 75% / 0.1),
+                         hsl(142 71% 60% / 0.1),
+                         hsl(262 83% 58% / 0.1),
+                         hsl(217 91% 60% / 0.1),
+                         hsl(142 71% 45% / 0.1));
+  }
+
+  .dark {
+    /* Complex Website Background - Dark Mode */
+    --gradient-website: radial-gradient(ellipse 80% 50% at 20% 40%, hsl(217 91% 75% / 0.08) 0%, transparent 50%),
+                       radial-gradient(ellipse 60% 40% at 80% 20%, hsl(142 71% 60% / 0.06) 0%, transparent 50%),
+                       radial-gradient(ellipse 70% 60% at 40% 80%, hsl(262 83% 58% / 0.1) 0%, transparent 50%),
+                       radial-gradient(ellipse 90% 70% at 90% 60%, hsl(217 91% 60% / 0.04) 0%, transparent 50%),
+                       radial-gradient(ellipse 50% 30% at 10% 70%, hsl(142 71% 45% / 0.05) 0%, transparent 50%),
+                       radial-gradient(ellipse 100% 80% at 50% 50%, hsl(217 91% 70% / 0.02) 0%, transparent 70%);
+
+    /* Complex Gradient Backgrounds - Dark Mode */
+    --gradient-complex: radial-gradient(ellipse at top left, hsl(217 91% 75% / 0.2) 0%, transparent 50%),
+                       radial-gradient(ellipse at top right, hsl(142 71% 60% / 0.15) 0%, transparent 50%),
+                       radial-gradient(ellipse at bottom left, hsl(262 83% 58% / 0.2) 0%, transparent 50%),
+                       radial-gradient(ellipse at bottom right, hsl(217 91% 60% / 0.1) 0%, transparent 50%),
+                       radial-gradient(ellipse at center, hsl(217 91% 70% / 0.05) 0%, transparent 60%);
+  }
+
+  /* Gradient utility classes */
+  .bg-gradient-website {
+    background: var(--gradient-website);
+  }
+
+  .bg-gradient-complex {
+    background: var(--gradient-complex);
+  }
+
+  .bg-gradient-animated {
+    background: var(--gradient-animated);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Subtle gradient overlay for content readability */
+  .gradient-overlay {
+    position: relative;
+  }
+
+  .gradient-overlay::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-website);
+    z-index: -1;
+    pointer-events: none;
+  }
+}

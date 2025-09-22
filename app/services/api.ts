@@ -1,7 +1,11 @@
 // services/api.ts
 import * as SecureStore from "expo-secure-store";
 
+<<<<<<< HEAD
 const API_URL = "http://10.215.214.2:5000"; // replace with your backend host
+=======
+const API_URL = "http://192.168.1.185:5000"; // replace with your backend host
+>>>>>>> 7cdd930f5ccba295b00ff2228dbea4b6a21f4c8c
 
 // --- Token helpers ---
 async function getToken() {
