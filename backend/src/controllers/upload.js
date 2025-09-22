@@ -3,7 +3,7 @@ import fs from "fs";
 import supabase from "../supabase.js";
 
 const BUCKET = process.env.SUPABASE_BUCKET || "uploads";
-const ALLOWED_CATEGORIES = ["road", "water", "garbage", "electricity", "other"];
+const ALLOWED_CATEGORIES = ["garbage", "normal road", "potholes", "street light off", "street light on"];
 
 // Middleware for user from token
 export async function getUserFromToken(req, res, next) {
