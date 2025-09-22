@@ -7,25 +7,26 @@ import { supabase } from '@/services/supabaseclient'; // ✅ import supabase cli
 export default function Index() {
   const router = useRouter();
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
+useEffect(() => {
+  const checkSession = async () => {
+    const { data, error } = await supabase.auth.getSession();
 
-      if (error) {
-        console.error('Error getting session:', error.message);
-        router.replace('/auth/signin');
-        return;
-      }
+    if (error) {
+      console.error("Error getting session:", error.message);
+      router.replace("/auth/signin");
+      return;
+    }
 
-      if (data.session) {
-        router.replace('/home'); // ✅ logged in
-      } else {
-        router.replace('/auth/signin'); // ❌ not logged in
-      }
-    };
+    if (data?.session && data.session.user) {
+      router.replace("/home"); // logged in
+    } else {
+      router.replace("/auth/signin"); // not logged in
+    }
+  };
 
-    checkSession();
-  }, []);
+  checkSession();
+}, []);
+
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
