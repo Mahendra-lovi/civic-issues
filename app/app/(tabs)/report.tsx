@@ -10,7 +10,6 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
-  Button,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -25,6 +24,7 @@ export default function ReportedScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [image, setImage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState<null | {
@@ -155,6 +155,7 @@ const stopRecording = async () => {
 
   const handleSubmit = async () => {
     if (!image) {
+        if (submitting) return; // prevent double submit
   Alert.alert('Missing fields', 'Image is required.');
   return;
 }
@@ -173,9 +174,11 @@ if (!location) {
 
 
     try {
-      const record = await uploadIssue({
+      setSubmitting(true);
+      // upload to server
+      await uploadIssue({
         imageUri: image,
-        audioUri: audioUri || undefined,
+        audioUri: audioUri ?? undefined,
         text: description.trim(),
         category,
         location,
@@ -196,6 +199,8 @@ if (!location) {
   }catch (err: any) {
     console.log('Submit err', err);
     Alert.alert('Error', err.message || 'Could not submit issue');
+  } finally {
+    setSubmitting(false);
   }
 };
 
@@ -258,16 +263,41 @@ if (!location) {
             <Text style={styles.locationLine}>Lat: {location.latitude.toFixed(6)}, Lng: {location.longitude.toFixed(6)}</Text>
           </View>
         )}
+<View style={styles.submitWrap}>
+  <TouchableOpacity
+    style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+    onPress={handleSubmit}
+    disabled={submitting}
+  >
+    {submitting ? (
+      <Text style={styles.submitText}>Submitting...</Text>
+    ) : (
+      <Text style={styles.submitText}>Submit Report</Text>
+    )}
+  </TouchableOpacity>
+</View>
 
-        <View style={styles.submitWrap}>
-          <Button title="Submit Report" onPress={handleSubmit} />
-        </View>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  submitBtn: {
+  backgroundColor: '#0A84FF',
+  paddingVertical: 12,
+  borderRadius: 8,
+  alignItems: 'center',
+},
+submitBtnDisabled: {
+  backgroundColor: '#999',
+},
+submitText: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: '600',
+},
+
   container: { padding: 16, alignItems: 'center' },
   card: {
     width: '100%',
