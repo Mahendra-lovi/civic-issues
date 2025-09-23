@@ -32,16 +32,43 @@ export async function uploadFile(req, res) {
     const address = req.body.address?.trim() || null;
 
     if (!category || !ALLOWED_CATEGORIES.includes(category)) {
-      return res.status(400).json({ status: "error", message: `Category must be one of: ${ALLOWED_CATEGORIES.join(", ")}` });
+      return res.status(400).json({
+        status: "error",
+        message: `Category must be one of: ${ALLOWED_CATEGORIES.join(", ")}`,
+      });
     }
+
+    // 🚨 Reject "normal road" and "street light on"
+    if (category === "normal road" || category === "street light on") {
+      return res
+        .status(400)
+        .json({ status: "error", message: "No problem found" });
+    }
+
     if (!files?.image) {
-      return res.status(400).json({ status: "error", message: "Image is required." });
+      return res
+        .status(400)
+        .json({ status: "error", message: "Image is required." });
     }
     if (!text && !files?.audio) {
-      return res.status(400).json({ status: "error", message: "Either text or audio must be provided." });
+      return res.status(400).json({
+        status: "error",
+        message: "Either text or audio must be provided.",
+      });
     }
     if (isNaN(latitude) || isNaN(longitude)) {
-      return res.status(400).json({ status: "error", message: "Latitude and longitude are required." });
+      return res.status(400).json({
+        status: "error",
+        message: "Latitude and longitude are required.",
+      });
+    }
+
+    // --- Auto assign department based on category ---
+    let department = "General";
+    if (["garbage", "potholes"].includes(category)) {
+      department = "Municipality";
+    } else if (["street light off"].includes(category)) {
+      department = "Electrical";
     }
 
     const uploadedFiles = {};
@@ -76,13 +103,14 @@ export async function uploadFile(req, res) {
       uploadedFiles.audio_url = `${process.env.SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${audioPath}`;
     }
 
-    // --- Save record in DB ---
+    // --- Save record in DB with department ---
     const { data, error: dbErr } = await supabase
       .from("messages")
       .insert([
         {
           user_id: req.user.id,
           category,
+          department, // ✅ added department
           text: text || null,
           image_url: uploadedFiles.image_url,
           audio_url: uploadedFiles.audio_url || null,
@@ -95,11 +123,16 @@ export async function uploadFile(req, res) {
 
     if (dbErr) throw dbErr;
 
-    return res.json({ status: "success", message: "Uploaded successfully", record: data[0] });
+    return res.json({
+      status: "success",
+      message: "Uploaded successfully",
+      record: data[0],
+    });
   } catch (err) {
     return res.status(500).json({ status: "error", message: err.message });
   }
 }
+
 
 // Get messages for this user
 export async function getMessages(req, res) {

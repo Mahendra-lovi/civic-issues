@@ -1,144 +1,106 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "../services/supabaseclient.js";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "../services/supabaseclient";
+import { log } from "console";
 
-interface Issue {
-  id: string;
-  text: string | null;
-  image_url: string | null;
-  audio_url: string | null;
-  created_at: string;
-  category: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  address: string | null;
-  user_id: string;
-  status: string | null;
-}
-
-export default function AdminReportsPage() {
-  const [issues, setIssues] = useState<Issue[]>([]);
+export default function ReportsPage() {
+  const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all reports
   useEffect(() => {
-    const fetchIssues = async () => {
+    const fetchMessages = async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from<Issue>("messages") // ✅ correct table
+        .from("messages")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error fetching issues:", error);
+        console.error("Error fetching messages:", error.message);
       } else {
-        setIssues(data || []);
+        console.log("ll");
+        
+        const cleanedData = data.map((item) => ({
+          ...item,
+          status: item.status?.trim(), // trim whitespace for badges
+        }));
+        setIssues(cleanedData);
       }
       setLoading(false);
     };
 
-    fetchIssues();
+    fetchMessages();
 
-    // 👀 Subscribe to realtime changes on messages
-    const channel = supabase
-      .channel("messages-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "messages" }, // ✅ fixed to messages
-        () => {
-          fetchIssues();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Optional: real-time updates
+  
   }, []);
 
-  const getStatusColor = (status: string | null) => {
-    switch (status) {
-      case "Pending":
-        return "bg-orange-100 text-orange-600";
-      case "In Progress":
-        return "bg-blue-100 text-blue-600";
-      case "Resolved":
-        return "bg-green-100 text-green-600";
-      default:
-        return "bg-gray-100 text-gray-600";
-    }
-  };
+  if (loading)
+    return <p className="text-center mt-10 text-gray-500">Loading issues...</p>;
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">📋 All User Reports</h1>
-
-      {loading ? (
-        <p className="text-gray-500">Loading reports...</p>
-      ) : issues.length === 0 ? (
-        <p className="text-gray-500">No reports found</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="p-4">
+      <table className="min-w-full border border-gray-200">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="p-2 border">Image</th>
+            <th className="p-2 border">Text</th>
+            <th className="p-2 border">Audio</th>
+            <th className="p-2 border">Category</th>
+            <th className="p-2 border">Address</th>
+            <th className="p-2 border">Status</th>
+          </tr>
+        </thead>
+        <tbody>
           <AnimatePresence>
             {issues.map((issue) => (
-              <motion.div
+              <motion.tr
                 key={issue.id}
-                className="bg-white shadow rounded-xl p-4 flex flex-col gap-3"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
               >
-                {/* Top row */}
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>{issue.category || "Uncategorized"}</span>
-                  <span>{new Date(issue.created_at).toLocaleString()}</span>
-                </div>
-
-                {/* Status */}
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">Status:</span>
+                <td className="p-2 border">
+                  {issue.image_url ? (
+                    <img
+                      src={issue.image_url}
+                      alt="issue"
+                      className="h-16 w-16 object-cover rounded"
+                    />
+                  ) : (
+                    "N/A"
+                  )}
+                </td>
+                <td className="p-2 border">{issue.text || "N/A"}</td>
+                <td className="p-2 border">
+                  {issue.audio_url ? (
+                    <audio controls src={issue.audio_url}></audio>
+                  ) : (
+                    "N/A"
+                  )}
+                </td>
+                <td className="p-2 border">{issue.category || "N/A"}</td>
+                <td className="p-2 border">{issue.address || "N/A"}</td>
+                <td className="p-2 border">
                   <span
-                    className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
-                      issue.status
-                    )}`}
+                    className={`px-2 py-1 rounded-full text-white text-sm ${
+                      issue.status === "Resolved"
+                        ? "bg-green-500"
+                        : issue.status === "Pending"
+                        ? "bg-yellow-500"
+                        : "bg-gray-500"
+                    }`}
                   >
-                    {issue.status || "Pending"}
+                    {issue.status}
                   </span>
-                </div>
-
-                {/* Image */}
-                {issue.image_url ? (
-                  <img
-                    src={issue.image_url}
-                    alt="Report"
-                    className="w-full h-40 object-cover rounded-md"
-                  />
-                ) : (
-                  <div className="w-full h-32 flex items-center justify-center border border-gray-200 rounded-md text-gray-400">
-                    No image
-                  </div>
-                )}
-
-                {/* Text */}
-                {issue.text && (
-                  <p className="text-sm text-gray-700">{issue.text}</p>
-                )}
-
-                {/* Location */}
-                <div className="border-t pt-2 text-sm text-gray-600">
-                  📍{" "}
-                  {issue.address ||
-                    (issue.latitude && issue.longitude
-                      ? `${issue.latitude}, ${issue.longitude}`
-                      : "No location")}
-                </div>
-              </motion.div>
+                </td>
+              </motion.tr>
             ))}
           </AnimatePresence>
-        </div>
-      )}
+        </tbody>
+      </table>
     </div>
   );
 }
