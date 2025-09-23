@@ -9,17 +9,22 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  StatusBar,
+  Dimensions,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "@/services/supabaseclient";
-import { useRouter } from "expo-router"; // ✅ import router for navigation
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+
+const { width } = Dimensions.get("window");
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
 
-  const router = useRouter(); // ✅ setup router
+  const router = useRouter();
 
   // Fetch profile on mount
   useEffect(() => {
@@ -75,13 +80,13 @@ export default function ProfileScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"], // ✅
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.7,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setAvatar(result.assets[0].uri); // local file URI
+      setAvatar(result.assets[0].uri);
     }
   };
 
@@ -94,8 +99,6 @@ export default function ProfileScreen() {
         data: { user },
         error: userErr,
       } = await supabase.auth.getUser();
-
-      console.log("USER FROM SUPABASE (on save):", user);
 
       if (userErr || !user) {
         Alert.alert("Error", "You must be logged in to update profile");
@@ -141,7 +144,7 @@ export default function ProfileScreen() {
 
       if (error) throw error;
 
-      Alert.alert("Success", "Profile updated!");
+      Alert.alert("Success", "Profile updated successfully!");
     } catch (err: any) {
       Alert.alert("Error", err.message);
     } finally {
@@ -149,121 +152,413 @@ export default function ProfileScreen() {
     }
   };
 
-  // ✅ Sign out handler
+  // Sign out handler
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert("Error", error.message);
-    } else {
-      router.replace("/auth/signin"); // ✅ redirect to signin
-    }
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+              Alert.alert("Error", error.message);
+            } else {
+              router.replace("/auth/signin");
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <Text>Loading...</Text>
+      <View style={styles.loadingContainer}>
+        <View style={styles.loadingSpinner}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity style={styles.avatarWrap} onPress={pickAvatar}>
-        {avatar ? (
-          <Image source={{ uri: avatar }} style={styles.avatar} />
-        ) : (
-          <Text style={{ color: "#888" }}>📷 Add Avatar</Text>
-        )}
-      </TouchableOpacity>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color="#ff4757" />
+        </TouchableOpacity>
+      </View>
 
-      <Text style={styles.label}>Email</Text>
-      <TextInput style={styles.input} value={profile?.email} editable={false} />
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Avatar Section */}
+        <View style={styles.avatarSection}>
+          <TouchableOpacity style={styles.avatarContainer} onPress={pickAvatar}>
+            {avatar ? (
+              <Image source={{ uri: avatar }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person" size={40} color="#a4b0be" />
+              </View>
+            )}
+            <View style={styles.editAvatarButton}>
+              <Ionicons name="camera" size={16} color="#fff" />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.avatarHint}>Tap to change photo</Text>
+        </View>
 
-      <Text style={styles.label}>Full Name</Text>
-      <TextInput
-        style={styles.input}
-        value={profile?.full_name}
-        onChangeText={(t) => setProfile({ ...profile, full_name: t })}
-      />
+        {/* Form Section */}
+        <View style={styles.formSection}>
+          {/* Email Field */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Email Address</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="#a4b0be" style={styles.inputIcon} />
+              <TextInput 
+                style={[styles.input, styles.disabledInput]} 
+                value={profile?.email}
+                editable={false}
+                placeholder="email@example.com"
+                placeholderTextColor="#a4b0be"
+              />
+            </View>
+          </View>
 
-      <Text style={styles.label}>Phone</Text>
-      <TextInput
-        style={styles.input}
-        value={profile?.phone}
-        onChangeText={(t) => setProfile({ ...profile, phone: t })}
-        keyboardType="phone-pad"
-      />
+          {/* Full Name Field */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Full Name</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#a4b0be" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={profile?.full_name}
+                onChangeText={(t) => setProfile({ ...profile, full_name: t })}
+                placeholder="Enter your full name"
+                placeholderTextColor="#a4b0be"
+              />
+            </View>
+          </View>
 
-      <Text style={styles.label}>Address</Text>
-      <TextInput
-        style={styles.input}
-        value={profile?.address}
-        onChangeText={(t) => setProfile({ ...profile, address: t })}
-      />
+          {/* Phone Field */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Phone Number</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="call-outline" size={20} color="#a4b0be" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={profile?.phone}
+                onChangeText={(t) => setProfile({ ...profile, phone: t })}
+                keyboardType="phone-pad"
+                placeholder="Enter your phone number"
+                placeholderTextColor="#a4b0be"
+              />
+            </View>
+          </View>
 
-      <Text style={styles.label}>Bio</Text>
-      <TextInput
-        style={[styles.input, { height: 80 }]}
-        value={profile?.bio}
-        onChangeText={(t) => setProfile({ ...profile, bio: t })}
-        multiline
-      />
+          {/* Address Field */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Address</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="location-outline" size={20} color="#a4b0be" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={profile?.address}
+                onChangeText={(t) => setProfile({ ...profile, address: t })}
+                placeholder="Enter your address"
+                placeholderTextColor="#a4b0be"
+              />
+            </View>
+          </View>
 
-      <TouchableOpacity style={styles.saveBtn} onPress={saveProfile}>
-        <Text style={styles.saveText}>Save Profile</Text>
-      </TouchableOpacity>
+          {/* Bio Field */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Bio</Text>
+            <View style={[styles.inputContainer, styles.textAreaContainer]}>
+              <Ionicons name="document-text-outline" size={20} color="#a4b0be" style={[styles.inputIcon, styles.textAreaIcon]} />
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={profile?.bio}
+                onChangeText={(t) => setProfile({ ...profile, bio: t })}
+                multiline
+                numberOfLines={4}
+                placeholder="Tell us about yourself..."
+                placeholderTextColor="#a4b0be"
+                textAlignVertical="top"
+              />
+            </View>
+          </View>
+        </View>
 
-      {/* ✅ New Sign Out button */}
-      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Sign Out</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Action Buttons Section */}
+        <View style={styles.actionSection}>
+          {/* Worker Login Button */}
+          <TouchableOpacity 
+            style={styles.workerLoginButton}
+            onPress={() => router.push('/(tabs)/worker')}
+          >
+            <View style={styles.buttonContent}>
+              <Ionicons name="briefcase-outline" size={24} color="#fff" />
+              <View style={styles.buttonTextContainer}>
+                <Text style={styles.buttonTitle}>Worker Portal</Text>
+                <Text style={styles.buttonSubtitle}>Access work assignments</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </View>
+          </TouchableOpacity>
+
+          {/* Save Button */}
+          <TouchableOpacity 
+            style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+            onPress={saveProfile}
+            disabled={loading}
+          >
+            <View style={styles.buttonContent}>
+              <Ionicons name="checkmark-circle-outline" size={24} color="#fff" />
+              <Text style={styles.saveButtonText}>
+                {loading ? "Saving..." : "Save Changes"}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, alignItems: "center" },
-  avatarWrap: {
+  container: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+  },
+  loadingSpinner: {
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#74b9ff",
+    fontWeight: "500",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: "#f8f9fa",
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#2d3436",
+  },
+  logoutButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  avatarSection: {
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  avatarContainer: {
+    position: "relative",
+    marginBottom: 8,
+  },
+  avatar: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    borderWidth: 1,
-    borderColor: "#ddd",
+  },
+  avatarPlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#f1f2f6",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
-    overflow: "hidden",
+    borderWidth: 3,
+    borderColor: "#e1e5e9",
+    borderStyle: "dashed",
   },
-  avatar: { width: "100%", height: "100%" },
-  label: { alignSelf: "flex-start", marginTop: 12, fontWeight: "600" },
-  input: {
-    width: "100%",
+  editAvatarButton: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#74b9ff",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  avatarHint: {
+    fontSize: 14,
+    color: "#a4b0be",
+    fontWeight: "500",
+  },
+  formSection: {
+    marginBottom: 20,
+  },
+  actionSection: {
+    marginBottom: 30,
+    gap: 16,
+  },
+  workerLoginButton: {
+    backgroundColor: "#6c5ce7",
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    shadowColor: "#6c5ce7",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  buttonTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  buttonTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  buttonSubtitle: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "400",
+    opacity: 0.9,
+    marginTop: 2,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2d3436",
+    marginBottom: 8,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 10,
+    borderColor: "#e1e5e9",
+  },
+  textAreaContainer: {
+    alignItems: "flex-start",
+    paddingVertical: 12,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  textAreaIcon: {
     marginTop: 4,
   },
-  saveBtn: {
-    marginTop: 20,
-    backgroundColor: "#007AFF",
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: "#2d3436",
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    width: "100%",
-    alignItems: "center",
+    fontWeight: "500",
   },
-  saveText: { color: "#fff", fontWeight: "600" },
-  logoutBtn: {
-    marginTop: 12,
-    backgroundColor: "#FF3B30",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    width: "100%",
-    alignItems: "center",
+  disabledInput: {
+    color: "#a4b0be",
   },
-  logoutText: { color: "#fff", fontWeight: "600" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  textArea: {
+    height: 80,
+    textAlignVertical: "top",
+  },
+  workerButton: {
+    backgroundColor: "#6c5ce7",
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    shadowColor: "#6c5ce7",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  workerButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  workerButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    flex: 1,
+    textAlign: "center",
+    marginLeft: 12,
+  },
+  saveButton: {
+    backgroundColor: "#00b894",
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: "center",
+    shadowColor: "#00b894",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  saveButtonDisabled: {
+    backgroundColor: "#a4b0be",
+    shadowOpacity: 0.1,
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
 });
