@@ -22,7 +22,7 @@ import { useRouter } from 'expo-router';
 // import { Issue, addIssue } from '../../services/issues';
 import { uploadIssue } from '../../services/api';
 
-const FLASK_BASE = 'http://10.222.34.251:5001'
+const FLASK_BASE = 'http://192.168.0.197:5001'
 
 export default function ReportedScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
