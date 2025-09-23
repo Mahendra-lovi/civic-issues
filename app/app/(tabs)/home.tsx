@@ -146,12 +146,12 @@ export default function HomeScreen() {
                 color="rgba(50,180,255,0.2)"
               />
             </Animated.View>
-            <Text style={styles.title}>Achievements</Text>
+            <Text style={styles.title}>Past Reports</Text>
             <Text style={styles.desc}>
-              Celebrate resolved reports & shared victories.
+              Review your previously submitted reports.
             </Text>
             <Link href="/past" asChild>
-              <GlassButton text="View Achievements" color="#0099FF" />
+              <GlassButton text="View Past Reports" color="#0099FF" />
             </Link>
           </BlurView>
         </LinearGradient>
