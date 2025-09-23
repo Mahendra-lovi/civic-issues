@@ -244,34 +244,43 @@ const stopRecording = async () => {
     }
 
     try {
-      setSubmitting(true);
-      // upload to server
-      const record = await uploadIssue({
-        imageUri: image,
-        audioUri: audioUri ?? undefined,
-        text: description.trim(),
-        category: finalCategory,
-        location,
-      });
+  setSubmitting(true);
+  // upload to server
+  const record = await uploadIssue({
+    imageUri: image,
+    audioUri: audioUri ?? undefined,
+    text: description.trim(),
+    category: finalCategory,
+    location,
+  });
 
-      Alert.alert('Success', 'Issue submitted');
+  Alert.alert('Success', 'Issue submitted');
 
-      // Clear inputs (or navigate to Past)
-      setImage(null);
-      setDescription('');
-      setCategory('');
-      setLocation(null);
-      setAudioUri(null);
-      setConfidence(null);
-      // go to Past screen
-      router.push('/past');
-    } catch (err: any) {
-      console.log('Submit err', err);
-      Alert.alert('Error', err.message || 'Could not submit issue');
-    } finally {
-      setSubmitting(false);
-    }
+  // Clear inputs (or navigate to Past)
+  setImage(null);
+  setDescription('');
+  setCategory('');
+  setLocation(null);
+  setAudioUri(null);
+  setConfidence(null);
+  router.push('/past');
+} catch (err: any) {
+  console.log('Submit err', err);
+
+  // ✅ Special check for "No problem found"
+  if (err?.message?.includes('No problem found')) {
+    Alert.alert(
+      'No Issue Detected',
+      'No issue found in the attached photo. Please check and try again.'
+    );
+  } else {
+    Alert.alert('Error', err.message || 'Could not submit issue');
+  }
+} finally {
+  setSubmitting(false);
+}
   };
+
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
